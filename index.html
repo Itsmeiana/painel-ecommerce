@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>StoreDash · Painel de Vendas</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 220px; min-width: 220px; background: #0f2744; color: #fff;
+    display: flex; flex-direction: column; padding: 0; min-height: 100vh;
+  }
+  .sidebar-logo { padding: 20px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .sidebar-logo .brand { font-size: 15px; font-weight: 700; color: #fff; }
+  .sidebar-logo .sub { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+  .sidebar-section { padding: 16px 12px 4px; font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 0.08em; text-transform: uppercase; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 16px; font-size: 13px; color: rgba(255,255,255,0.65);
+    cursor: pointer; border-radius: 6px; margin: 1px 8px; transition: background 0.15s;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .nav-item.active { background: #1a5fc8; color: #fff; }
+  .nav-item .badge { margin-left: auto; background: rgba(255,255,255,0.15); font-size: 10px; padding: 2px 7px; border-radius: 10px; }
+  .nav-item .icon { font-size: 16px; opacity: 0.8; }
+  .client-section { margin-top: auto; padding: 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+  .client-selector { width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 6px; padding: 8px 10px; font-size: 12px; cursor: pointer; }
+  .client-selector option { background: #0f2744; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .topbar-left h1 { font-size: 17px; font-weight: 700; color: #1a202c; }
+  .topbar-left p { font-size: 12px; color: #718096; margin-top: 1px; }
+  .topbar-right { display: flex; gap: 10px; align-items: center; }
+  .period-btn { padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #4a5568; transition: all 0.15s; }
+  .period-btn.active { background: #1a5fc8; color: #fff; border-color: #1a5fc8; }
+  .content { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .kpi-card { background: #fff; border-radius: 10px; padding: 16px 18px; border: 1px solid #e8edf3; position: relative; overflow: hidden; }
+  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .kpi-card.blue::before { background: #1a5fc8; }
+  .kpi-card.green::before { background: #10b981; }
+  .kpi-card.amber::before { background: #f59e0b; }
+  .kpi-card.red::before { background: #ef4444; }
+  .kpi-label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .kpi-value { font-size: 24px; font-weight: 700; color: #1a202c; }
+  .kpi-delta { font-size: 11px; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+  .kpi-delta.up { color: #10b981; }
+  .kpi-delta.down { color: #ef4444; }
+  .kpi-icon { position: absolute; top: 16px; right: 16px; font-size: 22px; opacity: 0.12; }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .chart-card { background: #fff; border-radius: 10px; padding: 18px 20px; border: 1px solid #e8edf3; }
+  .chart-title { font-size: 13px; font-weight: 600; color: #2d3748; margin-bottom: 4px; }
+  .chart-sub { font-size: 11px; color: #a0aec0; margin-bottom: 14px; }
+  canvas { width: 100% !important; }
+  .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .table-card { background: #fff; border-radius: 10px; padding: 18px 20px; border: 1px solid #e8edf3; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 6px 8px; color: #718096; font-weight: 600; font-size: 11px; border-bottom: 1px solid #f0f4f8; }
+  td { padding: 9px 8px; color: #2d3748; border-bottom: 1px solid #f7fafc; }
+  .status-badge { padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+  .status-badge.entregue { background: #d1fae5; color: #065f46; }
+  .status-badge.transito { background: #dbeafe; color: #1e40af; }
+  .status-badge.pendente { background: #fef3c7; color: #92400e; }
+  .status-badge.cancelado { background: #fee2e2; color: #991b1b; }
+  .meta-card { background: #fff; border-radius: 10px; padding: 18px 20px; border: 1px solid #e8edf3; }
+  .meta-item { margin-bottom: 16px; }
+  .meta-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .meta-name { font-size: 12px; font-weight: 600; color: #2d3748; }
+  .meta-pct { font-size: 12px; color: #718096; }
+  .progress-bar { height: 6px; background: #f0f4f8; border-radius: 10px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 10px; transition: width 1s ease; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">📦 StoreDash</div>
+    <div class="sub">Painel de Vendas · E-commerce</div>
+  </div>
+  <div class="sidebar-section">Navegação</div>
+  <div class="nav-item active" onclick="setNav(this)"><span class="icon">📊</span> Visão Geral</div>
+  <div class="nav-item" onclick="setNav(this)"><span class="icon">🛒</span> Pedidos <span class="badge">12</span></div>
+  <div class="nav-item" onclick="setNav(this)"><span class="icon">📦</span> Produtos</div>
+  <div class="nav-item" onclick="setNav(this)"><span class="icon">👥</span> Clientes</div>
+  <div class="nav-item" onclick="setNav(this)"><span class="icon">💰</span> Financeiro</div>
+  <div class="sidebar-section" style="margin-top:12px">Canais</div>
+  <div class="nav-item" onclick="setNav(this)"><span class="icon">🛍️</span> Shopee <span class="badge">34%</span></div>
+  <div class="nav-item" onclick="setNav(this)"><span class="icon">📱</span> Mercado Livre <span class="badge">41%</span></div>
+  <div class="nav-item" onclick="setNav(this)"><span class="icon">🌐</span> Loja Própria <span class="badge">25%</span></div>
+  <div class="client-section">
+    <div style="font-size:10px; color:rgba(255,255,255,0.35); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.06em;">Cliente</div>
+    <select class="client-selector" onchange="trocarCliente(this.value)">
+      <option value="0">Loja da Ana · MEI</option>
+      <option value="1">TechStore Brasil · ME</option>
+      <option value="2">Moda & Cia · EPP</option>
+    </select>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1 id="dash-title">Acompanhamento de Vendas — Loja da Ana</h1>
+      <p id="dash-sub">Mai 2025 · Dados atualizados via Bling API · Revisão 00</p>
+    </div>
+    <div class="topbar-right">
+      <button class="period-btn active" onclick="setPeriod(this,'7d')">7 dias</button>
+      <button class="period-btn" onclick="setPeriod(this,'30d')">30 dias</button>
+      <button class="period-btn" onclick="setPeriod(this,'90d')">90 dias</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="kpi-grid">
+      <div class="kpi-card blue">
+        <div class="kpi-icon">💵</div>
+        <div class="kpi-label">Faturamento (GMV)</div>
+        <div class="kpi-value" id="kpi-gmv">R$ 38.420</div>
+        <div class="kpi-delta up" id="kpi-gmv-d">▲ +12,4% vs mês anterior</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-icon">🛒</div>
+        <div class="kpi-label">Total de Pedidos</div>
+        <div class="kpi-value" id="kpi-pedidos">284</div>
+        <div class="kpi-delta up" id="kpi-pedidos-d">▲ +8,1% vs mês anterior</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-icon">🎯</div>
+        <div class="kpi-label">Ticket Médio</div>
+        <div class="kpi-value" id="kpi-ticket">R$ 135,28</div>
+        <div class="kpi-delta up" id="kpi-ticket-d">▲ +3,9% vs mês anterior</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-icon">❌</div>
+        <div class="kpi-label">Taxa de Cancelamento</div>
+        <div class="kpi-value" id="kpi-cancel">3,2%</div>
+        <div class="kpi-delta down" id="kpi-cancel-d">▼ -0,8% vs mês anterior</div>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">Evolução de Faturamento</div>
+        <div class="chart-sub">Últimos 7 dias · R$</div>
+        <canvas id="chartVendas" height="160"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Vendas por Canal</div>
+        <div class="chart-sub">Distribuição do período</div>
+        <canvas id="chartCanal" height="160"></canvas>
+      </div>
+    </div>
+
+    <div class="bottom-row">
+      <div class="table-card">
+        <div class="chart-title" style="margin-bottom:4px">Últimos Pedidos</div>
+        <div class="chart-sub" style="margin-bottom:12px">Pedidos recentes do cliente</div>
+        <table>
+          <thead>
+            <tr><th>#</th><th>Produto</th><th>Valor</th><th>Status</th></tr>
+          </thead>
+          <tbody id="tabela-pedidos"></tbody>
+        </table>
+      </div>
+      <div class="meta-card">
+        <div class="chart-title" style="margin-bottom:4px">Meta vs Realizado</div>
+        <div class="chart-sub" style="margin-bottom:16px">Progresso por canal · Maio 2025</div>
+        <div id="metas-container"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const clientes = [
+  {
+    nome: "Loja da Ana · MEI",
+    gmv: "R$ 38.420", gmvUp: true, gmvD: "▲ +12,4% vs mês anterior",
+    pedidos: "284", pedidosUp: true, pedidosD: "▲ +8,1% vs mês anterior",
+    ticket: "R$ 135,28", ticketUp: true, ticketD: "▲ +3,9% vs mês anterior",
+    cancel: "3,2%", cancelUp: false, cancelD: "▼ -0,8% vs mês anterior",
+    vendas: [4200, 3800, 5100, 4600, 6200, 5800, 8720],
+    canais: [41, 34, 25],
+    pedidosTabela: [
+      ["#4821","Tênis Casual Fem.","R$ 189,90","entregue"],
+      ["#4820","Kit Skincare","R$ 312,00","transito"],
+      ["#4819","Bolsa Couro Eco","R$ 245,00","entregue"],
+      ["#4818","Óculos de Sol","R$ 98,00","pendente"],
+      ["#4817","Camiseta Premium","R$ 67,00","cancelado"]
+    ],
+    metas: [
+      {nome:"Shopee", atual:14200, meta:18000},
+      {nome:"Mercado Livre", atual:16800, meta:20000},
+      {nome:"Loja Própria", atual:7420, meta:12000}
+    ]
+  },
+  {
+    nome: "TechStore Brasil · ME",
+    gmv: "R$ 127.890", gmvUp: true, gmvD: "▲ +21,3% vs mês anterior",
+    pedidos: "543", pedidosUp: true, pedidosD: "▲ +15,2% vs mês anterior",
+    ticket: "R$ 235,52", ticketUp: false, ticketD: "▼ -2,1% vs mês anterior",
+    cancel: "1,8%", cancelUp: false, cancelD: "▼ -1,2% vs mês anterior",
+    vendas: [12400, 11800, 15600, 18200, 21000, 19800, 29090],
+    canais: [55, 28, 17],
+    pedidosTabela: [
+      ["#9310","Headphone BT Pro","R$ 489,00","entregue"],
+      ["#9309","Smartwatch X2","R$ 876,00","transito"],
+      ["#9308","Mouse Gamer RGB","R$ 199,00","entregue"],
+      ["#9307","Teclado Mec.","R$ 345,00","transito"],
+      ["#9306","Webcam HD","R$ 289,00","pendente"]
+    ],
+    metas: [
+      {nome:"Mercado Livre", atual:67200, meta:80000},
+      {nome:"Shopee", atual:39800, meta:50000},
+      {nome:"Loja Própria", atual:20890, meta:30000}
+    ]
+  },
+  {
+    nome: "Moda & Cia · EPP",
+    gmv: "R$ 62.340", gmvUp: false, gmvD: "▼ -4,2% vs mês anterior",
+    pedidos: "418", pedidosUp: false, pedidosD: "▼ -6,8% vs mês anterior",
+    ticket: "R$ 149,14", ticketUp: true, ticketD: "▲ +2,7% vs mês anterior",
+    cancel: "5,6%", cancelUp: true, cancelD: "▲ +1,2% vs mês anterior",
+    vendas: [9800, 8200, 7600, 9100, 8400, 9800, 9440],
+    canais: [30, 45, 25],
+    pedidosTabela: [
+      ["#7201","Vestido Floral M","R$ 189,00","pendente"],
+      ["#7200","Blazer Feminino","R$ 298,00","entregue"],
+      ["#7199","Calça Jeans Slim","R$ 159,00","transito"],
+      ["#7198","Blusa Tricô","R$ 129,00","entregue"],
+      ["#7197","Saia Midi","R$ 145,00","cancelado"]
+    ],
+    metas: [
+      {nome:"Mercado Livre", atual:28800, meta:35000},
+      {nome:"Shopee", atual:18700, meta:25000},
+      {nome:"Loja Própria", atual:14840, meta:20000}
+    ]
+  }
+];
+
+let chartVendas, chartCanal;
+
+function renderCliente(idx) {
+  const c = clientes[idx];
+  document.getElementById('dash-title').textContent = 'Acompanhamento de Vendas — ' + c.nome.split(' · ')[0];
+  document.getElementById('kpi-gmv').textContent = c.gmv;
+  document.getElementById('kpi-gmv-d').textContent = c.gmvD;
+  document.getElementById('kpi-gmv-d').className = 'kpi-delta ' + (c.gmvUp ? 'up' : 'down');
+  document.getElementById('kpi-pedidos').textContent = c.pedidos;
+  document.getElementById('kpi-pedidos-d').textContent = c.pedidosD;
+  document.getElementById('kpi-pedidos-d').className = 'kpi-delta ' + (c.pedidosUp ? 'up' : 'down');
+  document.getElementById('kpi-ticket').textContent = c.ticket;
+  document.getElementById('kpi-ticket-d').textContent = c.ticketD;
+  document.getElementById('kpi-ticket-d').className = 'kpi-delta ' + (c.ticketUp ? 'up' : 'down');
+  document.getElementById('kpi-cancel').textContent = c.cancel;
+  document.getElementById('kpi-cancel-d').textContent = c.cancelD;
+  document.getElementById('kpi-cancel-d').className = 'kpi-delta ' + (!c.cancelUp ? 'up' : 'down');
+
+  const tbody = document.getElementById('tabela-pedidos');
+  tbody.innerHTML = c.pedidosTabela.map(p =>
+    '<tr><td style="color:#a0aec0">' + p[0] + '</td><td>' + p[1] + '</td><td style="font-weight:600">' + p[2] + '</td><td><span class="status-badge ' + p[3] + '">' + p[3].charAt(0).toUpperCase() + p[3].slice(1) + '</span></td></tr>'
+  ).join('');
+
+  const cores = ['#1a5fc8','#10b981','#f59e0b'];
+  document.getElementById('metas-container').innerHTML = c.metas.map((m, i) => {
+    const pct = Math.round(m.atual / m.meta * 100);
+    return '<div class="meta-item"><div class="meta-header"><span class="meta-name">' + m.nome + '</span><span class="meta-pct">' + pct + '% · R$ ' + m.atual.toLocaleString('pt-BR') + ' / R$ ' + m.meta.toLocaleString('pt-BR') + '</span></div><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%; background:' + cores[i] + '"></div></div></div>';
+  }).join('');
+
+  const dias = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  if (chartVendas) chartVendas.destroy();
+  chartVendas = new Chart(document.getElementById('chartVendas'), {
+    type: 'bar',
+    data: {
+      labels: dias,
+      datasets: [{ label: 'Faturamento', data: c.vendas, backgroundColor: 'rgba(26,95,200,0.15)', borderColor: '#1a5fc8', borderWidth: 2, borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, plugins: { legend: { display: false } },
+      scales: {
+        y: { grid: { color: '#f0f4f8' }, ticks: { font: { size: 10 }, callback: v => 'R$' + (v/1000).toFixed(0) + 'k' } },
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+
+  if (chartCanal) chartCanal.destroy();
+  chartCanal = new Chart(document.getElementById('chartCanal'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Mercado Livre','Shopee','Loja Própria'],
+      datasets: [{ data: c.canais, backgroundColor: ['#1a5fc8','#f59e0b','#10b981'], borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, cutout: '65%',
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } } }
+    }
+  });
+}
+
+function trocarCliente(idx) { renderCliente(parseInt(idx)); }
+function setNav(el) { document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); el.classList.add('active'); }
+function setPeriod(el) { document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+
+renderCliente(0);
+</script>
+</body>
+</html>
